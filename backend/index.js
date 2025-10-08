@@ -87,6 +87,13 @@ app.use("/", homeRoutes);
 
 app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
+app.get("/test", (req, res) => {
+  res.json({
+    message: "Hello World",
+    code: 200,
+  });
+});
+
 app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/dist", "index.html"));
 });
