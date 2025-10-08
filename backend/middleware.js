@@ -1,24 +1,26 @@
-const jwt = require("jsonwebtoken");
+const { jwtVerify } = require("jose");
 const SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
   if (!token) {
     console.log("[AUTH] No token provided");
     return res.sendStatus(401);
   }
-  jwt.verify(token, SECRET, (err, user) => {
-    if (err) {
-      console.log("[AUTH] Invalid token:", err.message);
-      return res.sendStatus(403);
-    }
+  
+  try {
+    const secret = new TextEncoder().encode(SECRET);
+    const { payload: user } = await jwtVerify(token, secret);
     console.log(
       `[AUTH] Token valid for user: ${user.email}, role: ${user.role}, org_id: ${user.organization_id}`
     );
     req.user = user;
     next();
-  });
+  } catch (err) {
+    console.log("[AUTH] Invalid token:", err.message);
+    return res.sendStatus(403);
+  }
 }
 
 function requireRole(...roles) {

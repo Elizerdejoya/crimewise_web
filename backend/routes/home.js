@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-const jwt = require("jsonwebtoken");
+const { SignJWT } = require("jose");
 const { authenticateToken, addOrganizationFilter } = require("../middleware");
 const SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
@@ -248,15 +248,16 @@ router.post("/api/login", async (req, res) => {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      const token = jwt.sign(
-        {
-          id: typeof user.id === "string" ? parseInt(user.id, 10) : user.id,
-          email: user.email,
-          role: user.role,
-        },
-        SECRET,
-        { expiresIn: "1h" }
-      );
+      const secret = new TextEncoder().encode(SECRET);
+      const token = await new SignJWT({
+        id: typeof user.id === "string" ? parseInt(user.id, 10) : user.id,
+        email: user.email,
+        role: user.role,
+      })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime("1h")
+        .sign(secret);
 
       console.log(`[LOGIN] Super admin login successful: ${email}`);
       res.json({ token, role: user.role });
@@ -305,17 +306,18 @@ router.post("/api/login", async (req, res) => {
         .json({ error: "Organization account is inactive" });
     }
 
-    const token = jwt.sign(
-      {
-        id: typeof user.id === "string" ? parseInt(user.id, 10) : user.id,
-        email: user.email,
-        role: user.role,
-        organization_id: user.organization_id,
-        organization_name: user.organization_name,
-      },
-      SECRET,
-      { expiresIn: "1h" }
-    );
+    const secret = new TextEncoder().encode(SECRET);
+    const token = await new SignJWT({
+      id: typeof user.id === "string" ? parseInt(user.id, 10) : user.id,
+      email: user.email,
+      role: user.role,
+      organization_id: user.organization_id,
+      organization_name: user.organization_name,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("1h")
+      .sign(secret);
 
     console.log(
       `[LOGIN] Organization user login successful: ${email}, org: ${user.organization_name}`
