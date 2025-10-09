@@ -1118,7 +1118,7 @@ const TakeExam = () => {
                     onChange={(e) => setStudentConclusion("fake")}
                     className="form-radio"
                   />
-                  <span>Fake Specimen</span>
+                  <span>Not Written by the Same Person</span>
                 </label>
                 <label className="flex items-center space-x-2">
                   <input
@@ -1129,7 +1129,7 @@ const TakeExam = () => {
                     onChange={(e) => setStudentConclusion("real")}
                     className="form-radio"
                   />
-                  <span>Real Specimen</span>
+                  <span>Written by the Same Person</span>
                 </label>
               </div>
               <p className="text-xs text-muted-foreground">
