@@ -110,9 +110,18 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const handleProfileClick = () => {
     // Allow profile access even if subscription is expired
+    // if (userRole) {
+    //   navigate(`/${userRole}/profile`);
+    // }
     if (userRole) {
-      navigate(`/${userRole}/profile`);
+      // super_admin shares the admin profile view — route to /admin/profile
+      if (userRole === "super_admin") {
+        navigate(`/admin/profile`);
+      } else {
+        navigate(`/${userRole}/profile`);
+      }
     }
+    
   };
 
   const handleSidebarNavigation = (path: string) => {
