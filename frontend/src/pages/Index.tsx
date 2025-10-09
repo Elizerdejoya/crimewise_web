@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/lib/config";
+import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -180,7 +181,7 @@ const Index = () => {
             onClick={() => navigate("/")}
           >
             <img
-              src="/logo.png"
+              src={logoImage}
               alt="CrimeWiseSystem Logo"
               className="h-8 w-8"
             />

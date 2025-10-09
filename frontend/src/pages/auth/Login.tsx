@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import AuthLayout from "@/components/layout/AuthLayout";
 import { API_BASE_URL } from "@/lib/config";
+import logoImage from "@/assets/logo.png";
 import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
@@ -63,7 +64,7 @@ const Login = () => {
   return (
     <AuthLayout>
       <div className="flex flex-col items-center mb-6">
-        <img src="/logo.png" alt="Logo" className="w-20 h-20 mb-2" />
+        <img src={logoImage} alt="Logo" className="w-20 h-20 mb-2" />
         <h1 className="text-2xl font-bold text-center">
           Online Forensic Examination System
         </h1>
