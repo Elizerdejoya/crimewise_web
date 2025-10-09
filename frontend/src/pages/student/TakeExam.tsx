@@ -235,37 +235,59 @@ const MultiImageDisplay = ({ images }: { images: string[] }) => {
   const [selectedImage, setSelectedImage] = useState(0);
 
   if (images.length === 1) {
-    return <ImageFullScreen src={images[0]} alt="Question Image" />;
+    return (
+      <div className="relative">
+        <div className="mb-2 flex justify-center">
+          <div className="bg-white text-black text-sm font-semibold px-3 py-1 rounded border border-gray-200 shadow-sm">SS</div>
+        </div>
+        <ImageFullScreen src={images[0]} alt="Question Image" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
-      {/* Image Navigation */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      {/* Image Navigation (thumbnails) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
         {images.map((image, index) => (
-          <button
-            key={index}
-            onClick={() => setSelectedImage(index)}
-            className={`flex-shrink-0 border-2 rounded-lg overflow-hidden transition-all ${selectedImage === index
-              ? "border-blue-500 shadow-lg"
-              : "border-gray-300 hover:border-gray-400"
+          <div key={index} className="flex items-center">
+            <button
+              onClick={() => setSelectedImage(index)}
+              className={`flex-shrink-0 relative border-2 rounded-lg overflow-hidden transition-all ${
+                selectedImage === index
+                  ? "border-blue-500 shadow-lg"
+                  : "border-gray-300 hover:border-gray-400"
               }`}
-          >
-            <img
-              src={image}
-              alt={`Image ${index + 1}`}
-              className="w-20 h-20 object-cover"
-            />
-          </button>
+            >
+              {/* Small top-center badge on thumbnail */}
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-white text-black text-xs font-semibold px-2 py-0.5 rounded-full shadow-sm border border-gray-200">
+                {index === 0 ? "SS" : "QS"}
+              </div>
+              <img src={image} alt={`Image ${index + 1}`} className="w-20 h-20 object-cover" />
+            </button>
+
+            {/* Softer divider between first and others */}
+            {index === 0 && images.length > 1 && (
+              <div className="w-px h-10 bg-gray-200 mx-3" aria-hidden />
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Main Image Display */}
+      {/* Main Image Display with small badge overlay and optional separator line under first image */}
       <div className="relative">
-        <ImageFullScreen
-          src={images[selectedImage]}
-          alt={`Question Image ${selectedImage + 1}`}
-        />
+        {/* Badge overlay on main image (top-center) */}
+        <div className="absolute z-30 top-3 left-1/2 transform -translate-x-1/2 bg-white text-black text-sm font-semibold px-3 py-1 rounded shadow-sm border border-gray-200">
+          {selectedImage === 0 ? "SS" : "QS"}
+        </div>
+
+        <ImageFullScreen src={images[selectedImage]} alt={`Question Image ${selectedImage + 1}`} />
+
+        {/* Show a subtle horizontal separator under the first image to separate it from others */}
+        {images.length > 1 && selectedImage === 0 && (
+          <div className="mt-4 border-t border-gray-200" />
+        )}
+
         <div className="absolute top-2 left-2 bg-white/90 rounded-md shadow-sm px-2 py-1 text-sm font-medium">
           Image {selectedImage + 1} of {images.length}
         </div>
