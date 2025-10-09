@@ -63,7 +63,7 @@ const Login = () => {
   return (
     <AuthLayout>
       <div className="flex flex-col items-center mb-6">
-        <img src="/logo.png" alt="Logo" className="w-20 h-20 mb-2" />
+        <img src="../../logo.png" alt="Logo" className="w-20 h-20 mb-2" />
         <h1 className="text-2xl font-bold text-center">
           Online Forensic Examination System
         </h1>
