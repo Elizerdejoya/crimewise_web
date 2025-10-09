@@ -37,6 +37,8 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { urlToBase64 } from "@/lib/printUtils";
+import printConfig from '@/lib/printConfig';
 import {
   Select,
   SelectContent,
