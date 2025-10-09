@@ -85,3 +85,39 @@
     @apply bg-background text-foreground;
   }
 }
+/* Print-specific styles for header/footer logos */
+@media print {
+  .print-header, .print-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    width: 100%;
+    text-align: center;
+    z-index: 9999;
+    background: transparent;
+  }
+
+  .print-header {
+    top: 0;
+  }
+
+  .print-footer {
+    bottom: 0;
+  }
+
+  .print-logo-top, .print-logo-bottom {
+    display: block;
+    margin: 0 auto;
+    width: 350px; /* adjust as needed */
+    height: auto;
+  }
+
+  /* Ensure main content doesn't overlap header/footer when printing */
+  @page {
+    margin: 120px 20px 120px 20px; /* top/right/bottom/left - adjust if needed */
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+  }
+}
