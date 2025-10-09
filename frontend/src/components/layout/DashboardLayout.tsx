@@ -113,6 +113,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     // if (userRole) {
     //   navigate(`/${userRole}/profile`);
     // }
+      if (userRole) {
+      // super_admin shares the admin profile view — route to /admin/profile
       if (userRole === "super_admin") {
         navigate(`/admin/profile`);
       } else {
