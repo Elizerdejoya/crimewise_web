@@ -1142,7 +1142,7 @@ const TakeExam = () => {
           {/* Explanation field */}
           <div className="space-y-2 mt-6 border-t pt-4">
             <label htmlFor="explanation" className="block text-sm font-medium">
-              Explanation
+              Findings
             </label>
             <textarea
               id="explanation"
