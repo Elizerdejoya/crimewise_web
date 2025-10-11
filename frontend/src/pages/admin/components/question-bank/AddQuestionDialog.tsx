@@ -73,12 +73,11 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const MAX_FILES = 15;
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  const allowedTypes = ["image/png", "image/jpeg"];
+  const ALLOWED_TYPES = ["image/png", "image/jpeg"];
 
   if (!e.target.files) return;
 
   const incoming = Array.from(e.target.files);
-  // limit how many we accept in total
   const remaining = Math.max(0, MAX_FILES - imageFiles.length);
 
   const validated: File[] = [];
@@ -86,7 +85,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
   for (const file of incoming) {
     if (validated.length >= remaining) break;
 
-    if (!allowedTypes.includes(file.type)) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
       toast({
         title: "Invalid file type",
         description: `${file.name} is not a PNG or JPEG image.`,
@@ -94,7 +93,6 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
       });
       continue;
     }
-
     if (file.size > MAX_FILE_SIZE) {
       toast({
         title: "File too large",
@@ -103,7 +101,6 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
       });
       continue;
     }
-
     validated.push(file);
   }
 
@@ -111,7 +108,6 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
     setImageFiles((prev) => [...prev, ...validated]);
   }
 };
-
   const handleRemoveImage = (index: number) => {
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
@@ -211,8 +207,8 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
       // Don't return here, just warn the user
     }
 
-    // Handle multiple image uploads
-    // Handle multiple image uploads (sequential to reduce concurrent memory use)
+   
+// Handle multiple image uploads sequentially to reduce memory pressure
 if (imageFiles.length > 0) {
   const urls: string[] = [];
   for (const file of imageFiles) {
