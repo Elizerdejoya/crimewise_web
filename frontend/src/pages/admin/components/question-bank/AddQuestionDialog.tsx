@@ -331,10 +331,10 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
             <Label>Question Images</Label>
             <input
               type="file"
-              accept="image/*"
-              multiple
+              accept="image/png,image/jpeg"
+               multiple
               ref={imageInputRef}
-              onChange={handleImageChange}
+             onChange={handleImageChange}
             />
             {imageFiles.length > 0 && (
               <div className="space-y-2">
