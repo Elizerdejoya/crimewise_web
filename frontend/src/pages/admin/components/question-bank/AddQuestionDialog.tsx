@@ -207,30 +207,37 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
       // Don't return here, just warn the user
     }
 
-   
-// Handle multiple image uploads sequentially to reduce memory pressure
-if (imageFiles.length > 0) {
-  const urls: string[] = [];
-  for (const file of imageFiles) {
-    try {
-      const url = await new Promise<string>((resolve, reject) => {
-        uploadImage(file, resolve, reject);
-      });
-      urls.push(url);
-    } catch (err) {
-      toast({
-        title: "Upload Failed",
-        description: `Failed to upload ${file.name}.`,
-        variant: "destructive",
-      });
-      console.error("[Questions][Upload] Error:", err);
-      return; // abort adding the question
+    // Handle multiple image uploads sequentially to reduce memory pressure
+    if (imageFiles.length > 0) {
+      console.log(`[Questions] Starting upload of ${imageFiles.length} image(s)`);
+      const urls: string[] = [];
+      
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        try {
+          console.log(`[Questions] Uploading image ${i + 1}/${imageFiles.length}: ${file.name}`);
+          const url = await new Promise<string>((resolve, reject) => {
+            uploadImage(file, resolve, reject);
+          });
+          urls.push(url);
+          console.log(`[Questions] Successfully uploaded image ${i + 1}/${imageFiles.length}`);
+        } catch (err: any) {
+          const errorMessage = err?.message || "Unknown error occurred";
+          toast({
+            title: "Upload Failed",
+            description: `Failed to upload "${file.name}": ${errorMessage}`,
+            variant: "destructive",
+          });
+          console.error(`[Questions][Upload] Error uploading ${file.name}:`, err);
+          return; // abort adding the question
+        }
+      }
+      
+      console.log(`[Questions] All ${imageFiles.length} image(s) uploaded successfully`);
+      finalizeQuestionSubmission(urls.join("|"));
+    } else {
+      finalizeQuestionSubmission("");
     }
-  }
-  finalizeQuestionSubmission(urls.join("|"));
-} else {
-  finalizeQuestionSubmission("");
-}
   };
 
   const finalizeQuestionSubmission = (imageUrl: string) => {

@@ -790,28 +790,50 @@ router.post(
 
       // For memory storage (Vercel/production) - use Vercel Blob
       if (req.file.buffer) {
+        console.log("[UPLOAD] Production mode detected, using Vercel Blob");
+        
         // Check if BLOB_READ_WRITE_TOKEN is configured
-        if (!process.env.BLOB_READ_WRITE_TOKEN) {
-          console.error("[UPLOAD] BLOB_READ_WRITE_TOKEN not configured");
+        // Support both standard name and the duplicate name that Vercel sometimes creates
+        const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN;
+        
+        if (!blobToken) {
+          console.error("[UPLOAD] ERROR: BLOB_READ_WRITE_TOKEN not configured");
           return res.status(500).json({ 
-            error: "Cloud storage not configured. Please add BLOB_READ_WRITE_TOKEN to environment variables." 
+            error: "Cloud storage not configured. Please add BLOB_READ_WRITE_TOKEN environment variable in Vercel project settings and redeploy." 
           });
         }
 
+        console.log("[UPLOAD] Token found, uploading to Vercel Blob...");
+        
         try {
+          // Validate that put function is available
+          if (typeof put !== 'function') {
+            console.error("[UPLOAD] ERROR: @vercel/blob module not loaded correctly");
+            return res.status(500).json({ 
+              error: "Vercel Blob module not loaded. Please ensure @vercel/blob is installed." 
+            });
+          }
+
           // Upload to Vercel Blob with unique filename
-          const filename = `${Date.now()}-${req.file.originalname}`;
+          const filename = `questions/${Date.now()}-${req.file.originalname}`;
+          console.log(`[UPLOAD] Uploading file: ${filename}, size: ${req.file.buffer.length} bytes`);
+          
           const blob = await put(filename, req.file.buffer, {
             access: "public",
-            token: process.env.BLOB_READ_WRITE_TOKEN,
+            token: blobToken,
           });
 
-          console.log("[UPLOAD] Successfully uploaded to Vercel Blob:", blob.url);
+          console.log("[UPLOAD] ✅ Successfully uploaded to Vercel Blob:", blob.url);
           return res.json({ url: blob.url });
         } catch (blobError) {
-          console.error("[UPLOAD] Vercel Blob upload failed:", blobError);
+          console.error("[UPLOAD] ❌ Vercel Blob upload failed:");
+          console.error("[UPLOAD] Error name:", blobError.name);
+          console.error("[UPLOAD] Error message:", blobError.message);
+          console.error("[UPLOAD] Error stack:", blobError.stack);
+          
           return res.status(500).json({ 
-            error: "Failed to upload to cloud storage: " + blobError.message 
+            error: "Failed to upload to cloud storage: " + (blobError.message || "Unknown error"),
+            details: process.env.NODE_ENV === 'development' ? blobError.stack : undefined
           });
         }
       }
@@ -829,11 +851,14 @@ router.post(
 
 // Test endpoint to check if Blob storage is configured
 router.get("/upload/test", authenticateToken, (req, res) => {
-  const hasToken = !!process.env.BLOB_READ_WRITE_TOKEN;
+  const standardToken = process.env.BLOB_READ_WRITE_TOKEN;
+  const duplicateToken = process.env.BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN;
+  const hasToken = !!(standardToken || duplicateToken);
   const isProduction = !!(process.env.VERCEL || process.env.NODE_ENV === "production");
   
   res.json({
     configured: hasToken,
+    tokenName: standardToken ? "BLOB_READ_WRITE_TOKEN" : duplicateToken ? "BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN" : "none",
     environment: isProduction ? "production" : "development",
     storageType: isProduction ? (hasToken ? "Vercel Blob" : "Not configured") : "Local disk",
     message: hasToken 

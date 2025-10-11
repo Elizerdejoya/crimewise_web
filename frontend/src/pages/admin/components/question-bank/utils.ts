@@ -298,6 +298,8 @@ export async function uploadImage(
       headers.Authorization = `Bearer ${token}`;
     }
 
+    console.log(`[Upload] Starting upload for: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+
     const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
       method: "POST",
       headers,
@@ -310,12 +312,30 @@ export async function uploadImage(
     }
 
     if (uploadRes.ok) {
-      const { url } = await uploadRes.json();
-      onSuccess(url);
+      const data = await uploadRes.json();
+      if (data.url) {
+        console.log(`[Upload] Successfully uploaded: ${file.name}`);
+        onSuccess(data.url);
+      } else {
+        console.error("[Upload] No URL in response:", data);
+        onError(new Error("Upload succeeded but no URL returned"));
+      }
     } else {
-      onError(new Error("Failed to upload image"));
+      // Try to get error message from response
+      let errorMessage = "Failed to upload image";
+      try {
+        const errorData = await uploadRes.json();
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } catch (e) {
+        // If parsing JSON fails, use default message
+      }
+      console.error(`[Upload] Failed to upload ${file.name}:`, errorMessage);
+      onError(new Error(errorMessage));
     }
   } catch (err) {
+    console.error(`[Upload] Exception during upload of ${file.name}:`, err);
     onError(err);
   }
 }
