@@ -4,6 +4,7 @@ const db = require("../db");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { put } = require("@vercel/blob");
 const {
   authenticateToken,
   requireRole,
@@ -775,29 +776,72 @@ if (process.env.VERCEL || process.env.NODE_ENV === "production") {
 }
 
 
-// Then modify your upload route handler to work with both storage types:
+// Upload endpoint with Vercel Blob Storage support
 router.post(
   "/upload",
   authenticateToken,
   requireRole("admin", "super_admin", "instructor"),
   upload.single("file"),
-  (req, res) => {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
 
-    // For memory storage (Vercel/production)
-    if (req.file.buffer) {
-      // In production, we can't save to local filesystem
-      // Instead, return a data URL or consider using a cloud storage service
-      const base64 = req.file.buffer.toString("base64");
-      const mimeType = req.file.mimetype || "application/octet-stream";
-      const dataUrl = `data:${mimeType};base64,${base64}`;
-      return res.json({ url: dataUrl });
+      // For memory storage (Vercel/production) - use Vercel Blob
+      if (req.file.buffer) {
+        // Check if BLOB_READ_WRITE_TOKEN is configured
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+          console.error("[UPLOAD] BLOB_READ_WRITE_TOKEN not configured");
+          return res.status(500).json({ 
+            error: "Cloud storage not configured. Please add BLOB_READ_WRITE_TOKEN to environment variables." 
+          });
+        }
+
+        try {
+          // Upload to Vercel Blob with unique filename
+          const filename = `${Date.now()}-${req.file.originalname}`;
+          const blob = await put(filename, req.file.buffer, {
+            access: "public",
+            token: process.env.BLOB_READ_WRITE_TOKEN,
+          });
+
+          console.log("[UPLOAD] Successfully uploaded to Vercel Blob:", blob.url);
+          return res.json({ url: blob.url });
+        } catch (blobError) {
+          console.error("[UPLOAD] Vercel Blob upload failed:", blobError);
+          return res.status(500).json({ 
+            error: "Failed to upload to cloud storage: " + blobError.message 
+          });
+        }
+      }
+
+      // For disk storage (local development)
+      const url = `/uploads/${req.file.filename}`;
+      console.log("[UPLOAD] Local file saved:", url);
+      res.json({ url });
+    } catch (err) {
+      console.error("[UPLOAD] Unexpected error:", err);
+      return res.status(500).json({ error: "Upload failed: " + err.message });
     }
-
-    // For disk storage (local development)
-    const url = `/uploads/${req.file.filename}`;
-    res.json({ url });
   }
 );
+
+// Test endpoint to check if Blob storage is configured
+router.get("/upload/test", authenticateToken, (req, res) => {
+  const hasToken = !!process.env.BLOB_READ_WRITE_TOKEN;
+  const isProduction = !!(process.env.VERCEL || process.env.NODE_ENV === "production");
+  
+  res.json({
+    configured: hasToken,
+    environment: isProduction ? "production" : "development",
+    storageType: isProduction ? (hasToken ? "Vercel Blob" : "Not configured") : "Local disk",
+    message: hasToken 
+      ? "✅ Blob storage is configured and ready!"
+      : isProduction 
+        ? "❌ Blob storage not configured. Add BLOB_READ_WRITE_TOKEN environment variable."
+        : "ℹ️ Local development: using disk storage (no token needed)"
+  });
+});
 
 module.exports = router;
