@@ -735,7 +735,7 @@ if (process.env.VERCEL || process.env.NODE_ENV === "production") {
   // For Vercel/production environments, use memory storage instead of disk storage
   upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    // limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   });
 } else {
   // For local development, continue using disk storage
