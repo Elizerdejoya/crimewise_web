@@ -71,11 +71,46 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setImageFiles((prev) => [...prev, ...newFiles]);
+  const MAX_FILES = 15;
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const allowedTypes = ["image/png", "image/jpeg"];
+
+  if (!e.target.files) return;
+
+  const incoming = Array.from(e.target.files);
+  // limit how many we accept in total
+  const remaining = Math.max(0, MAX_FILES - imageFiles.length);
+
+  const validated: File[] = [];
+
+  for (const file of incoming) {
+    if (validated.length >= remaining) break;
+
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: `${file.name} is not a PNG or JPEG image.`,
+        variant: "destructive",
+      });
+      continue;
     }
-  };
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: `${file.name} exceeds the 10MB size limit.`,
+        variant: "destructive",
+      });
+      continue;
+    }
+
+    validated.push(file);
+  }
+
+  if (validated.length > 0) {
+    setImageFiles((prev) => [...prev, ...validated]);
+  }
+};
 
   const handleRemoveImage = (index: number) => {
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
