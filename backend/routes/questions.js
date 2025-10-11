@@ -773,7 +773,7 @@ if (process.env.VERCEL || process.env.NODE_ENV === "production") {
     });
   }
 }
-}
+
 
 // Then modify your upload route handler to work with both storage types:
 router.post(
