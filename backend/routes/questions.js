@@ -731,15 +731,26 @@ router.delete("/exams/:id", async (req, res) => {
 
 // Vercel-compatible upload configuration:
 let upload;
+// Accept only JPEG/PNG and enforce per-file size limits
+const imageFileFilter = (req, file, cb) => {
+  const allowed = ["image/jpeg", "image/jpg", "image/png"];
+  if (allowed.includes(file.mimetype)) cb(null, true);
+  else cb(new Error("Only JPEG and PNG image types are allowed"), false);
+};
+
 if (process.env.VERCEL || process.env.NODE_ENV === "production") {
-  // For Vercel/production environments, use memory storage instead of disk storage
+  // For Vercel/production environments, use memory storage (no disk)
   upload = multer({
     storage: multer.memoryStorage(),
-    // limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: imageFileFilter,
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB per file
+      files: 15,                  // optional: max 15 files per request
+    },
   });
 } else {
-  // For local development, continue using disk storage
-  const uploadDir = path.join(__dirname, "../public/uploads");
+  // Local development: store on disk (so frontend can GET /uploads/filename)
+  const uploadDir = path.join(__dirname, "../../public/uploads");
   try {
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
     const storage = multer.diskStorage({
@@ -747,12 +758,21 @@ if (process.env.VERCEL || process.env.NODE_ENV === "production") {
       filename: (req, file, cb) =>
         cb(null, Date.now() + "-" + file.originalname),
     });
-    upload = multer({ storage });
+    upload = multer({
+      storage,
+      fileFilter: imageFileFilter,
+      limits: { fileSize: 10 * 1024 * 1024, files: 15 },
+    });
   } catch (err) {
     console.error("Failed to initialize disk storage for uploads:", err);
-    // Fallback to memory storage if disk storage fails
-    upload = multer({ storage: multer.memoryStorage() });
+    // Fallback to memory storage if disk fails
+    upload = multer({
+      storage: multer.memoryStorage(),
+      fileFilter: imageFileFilter,
+      limits: { fileSize: 10 * 1024 * 1024, files: 15 },
+    });
   }
+}
 }
 
 // Then modify your upload route handler to work with both storage types:
