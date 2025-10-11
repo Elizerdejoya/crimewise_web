@@ -212,33 +212,29 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
     }
 
     // Handle multiple image uploads
-    if (imageFiles.length > 0) {
-      const uploadPromises = imageFiles.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            uploadImage(
-              file,
-              (url) => resolve(url),
-              (err) => reject(err)
-            );
-          })
-      );
-
-      try {
-        const imageUrls = await Promise.all(uploadPromises);
-        finalizeQuestionSubmission(imageUrls.join("|"));
-      } catch (err) {
-        toast({
-          title: "Upload Failed",
-          description: "Failed to upload one or more image files.",
-          variant: "destructive",
-        });
-        console.error("[Questions][Upload] Error:", err);
-        return;
-      }
-    } else {
-      finalizeQuestionSubmission("");
+    // Handle multiple image uploads (sequential to reduce concurrent memory use)
+if (imageFiles.length > 0) {
+  const urls: string[] = [];
+  for (const file of imageFiles) {
+    try {
+      const url = await new Promise<string>((resolve, reject) => {
+        uploadImage(file, resolve, reject);
+      });
+      urls.push(url);
+    } catch (err) {
+      toast({
+        title: "Upload Failed",
+        description: `Failed to upload ${file.name}.`,
+        variant: "destructive",
+      });
+      console.error("[Questions][Upload] Error:", err);
+      return; // abort adding the question
     }
+  }
+  finalizeQuestionSubmission(urls.join("|"));
+} else {
+  finalizeQuestionSubmission("");
+}
   };
 
   const finalizeQuestionSubmission = (imageUrl: string) => {
