@@ -48,6 +48,7 @@ const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
   const [forensicRows, setForensicRows] = useState<ForensicAnswerRow[]>([]);
   const [explanation, setExplanation] = useState("");
   const [explanationPoints, setExplanationPoints] = useState(0);
+  const [rubrics, setRubrics] = useState({ accuracy: 40, completeness: 30, clarity: 20, objectivity: 10 });
   const [selectedKeywordPool, setSelectedKeywordPool] = useState<any>(null);
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const { toast } = useToast();
@@ -76,6 +77,20 @@ const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
       } else {
         setSelectedKeywordPool(null);
         setSelectedKeywords([]);
+      }
+      // Load rubrics if present
+      if (question && question.rubrics) {
+        try {
+          const parsed = typeof question.rubrics === 'string' ? JSON.parse(question.rubrics) : question.rubrics;
+          setRubrics({
+            accuracy: Number(parsed.accuracy ?? 40),
+            completeness: Number(parsed.completeness ?? 30),
+            clarity: Number(parsed.clarity ?? 20),
+            objectivity: Number(parsed.objectivity ?? 10),
+          });
+        } catch (e) {
+          // ignore
+        }
       }
       
       // Parse forensic answer data if question is of forensic type
@@ -221,6 +236,8 @@ const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
       keyword_pool_id: selectedKeywordPool?.id || null,
       selected_keywords: selectedKeywords.length > 0 ? JSON.stringify(selectedKeywords) : null
     };
+    // Attach rubrics
+    formWithKeywords.rubrics = JSON.stringify(rubrics);
     
     updateQuestion(
       formWithKeywords,
