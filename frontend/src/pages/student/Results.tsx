@@ -39,6 +39,7 @@ const Results = () => {
   const [filteredResults, setFilteredResults] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedResult, setSelectedResult] = useState<any>(null);
+  const [selectedAiGrade, setSelectedAiGrade] = useState<any>(null);
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: 'asc' | 'desc';
@@ -386,8 +387,26 @@ const Results = () => {
     printWindow.print();
     printWindow.close();
   };
+  
+  // Fetch AI grade for a particular result when user opens details
+  const fetchAiGradeForResult = async (studentId: number, examId: number) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/ai-grader/result/${studentId}/${examId}`, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        setSelectedAiGrade(null);
+        return null;
+      }
+      const data = await res.json();
+      setSelectedAiGrade(data);
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch AI grade:', err);
+      setSelectedAiGrade(null);
+      return null;
+    }
+  };
 
-
+  
   // Process results for display with sorting
   const processedResults = [...filteredResults].map(result => {
     // Compute raw_score, raw_total, and points-based scoring for forensic if not present
@@ -620,7 +639,7 @@ const Results = () => {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setSelectedResult(result)}
+                                    onClick={async () => { await fetchAiGradeForResult(result.student_id || result.studentId, result.exam_id || result.examId); setSelectedResult(result); }}
                                   >
                                     <Eye className="h-4 w-4 mr-2" /> View Details
                                   </Button>
@@ -630,6 +649,11 @@ const Results = () => {
                                     <DialogTitle>Exam Results: {result.examName}</DialogTitle>
                                   </DialogHeader>
                                   <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <Button size="sm" variant="outline" onClick={async () => { await fetchAiGradeForResult(result.student_id || result.studentId, result.exam_id || result.examId); }}>
+                                        Refresh AI grade
+                                      </Button>
+                                    </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                       <div>
                                         <p className="text-sm font-medium">Course</p>
@@ -650,6 +674,28 @@ const Results = () => {
                                         </p>
                                       </div>
                                     </div>
+
+                                    {selectedAiGrade ? (
+                                      <div className="p-4 border rounded-md bg-white">
+                                        <h4 className="font-semibold mb-2">AI Rubric Breakdown</h4>
+                                        <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                                          <div><strong>Accuracy:</strong> {selectedAiGrade.accuracy ?? '-'}%</div>
+                                          <div><strong>Completeness:</strong> {selectedAiGrade.completeness ?? '-'}%</div>
+                                          <div><strong>Clarity:</strong> {selectedAiGrade.clarity ?? '-'}%</div>
+                                          <div><strong>Objectivity:</strong> {selectedAiGrade.objectivity ?? '-'}%</div>
+                                          <div className="col-span-2 mt-2"><strong>Overall Score:</strong> {selectedAiGrade.score ?? '-'}%</div>
+                                        </div>
+                                        <div className="mt-2">
+                                          <strong>AI Explanation:</strong>
+                                          <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{selectedAiGrade.feedback}</div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="p-4 border rounded-md bg-yellow-50 text-sm">
+                                        <strong>AI grading pending.</strong>
+                                        <div className="mt-1">The AI grader is processing this submission. Click "Refresh AI grade" to retry fetching the result.</div>
+                                      </div>
+                                    )}
 
                                     {/* Keyword Pool Display */}
                                     {result.keyword_pool_name && result.keyword_pool_keywords && (
