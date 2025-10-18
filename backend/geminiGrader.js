@@ -78,11 +78,46 @@ Evaluate carefully and return ONLY valid JSON.`;
       } else throw err;
     }
 
-  const accuracy = Math.round(Number(parsed.accuracy ?? 0));
-  const completeness = Math.round(Number(parsed.completeness ?? 0));
-  const clarity = Math.round(Number(parsed.clarity ?? 0));
-  const objectivity = Math.round(Number(parsed.objectivity ?? 0));
-    let overall = Number(parsed.overall_score ?? NaN);
+    // Helpful debug logging (will show in Vercel logs). Keep concise.
+    console.log('[GRADER] Raw model text:', text.slice(0, 800));
+    console.log('[GRADER] Parsed JSON keys:', parsed && Object.keys(parsed));
+
+    // Helper: parse numeric value from a variety of formats, e.g. "80%", "80", 80, "80.5"
+    const parseNum = (v) => {
+      if (v === null || v === undefined) return null;
+      if (typeof v === 'number' && !Number.isNaN(v)) return v;
+      if (typeof v === 'string') {
+        // extract first numeric substring
+        const m = v.match(/-?\d+(?:\.\d+)?/);
+        if (m) return Number(m[0]);
+        return null;
+      }
+      return null;
+    };
+
+    let rawAcc = parseNum(parsed.accuracy ?? parsed.Accuracy ?? parsed.accuracy_percent ?? null);
+    let rawComp = parseNum(parsed.completeness ?? parsed.Completeness ?? parsed.completeness_percent ?? null);
+    let rawClar = parseNum(parsed.clarity ?? parsed.Clarity ?? parsed.clarity_percent ?? null);
+    let rawObj = parseNum(parsed.objectivity ?? parsed.Objectivity ?? parsed.objectivity_percent ?? null);
+
+    // If model returned only overall_score, distribute the overall into components using rubric weights
+    let parsedOverall = parseNum(parsed.overall_score ?? parsed.overall ?? parsed.score ?? null);
+
+    // If individual components are missing (null) but overall exists, compute proportional breakdown
+    const totalWeight = (rubricWeights.accuracy || 0) + (rubricWeights.completeness || 0) + (rubricWeights.clarity || 0) + (rubricWeights.objectivity || 0) || 100;
+    if (parsedOverall !== null) {
+      if (rawAcc === null) rawAcc = Math.round(parsedOverall * (rubricWeights.accuracy || 0) / totalWeight);
+      if (rawComp === null) rawComp = Math.round(parsedOverall * (rubricWeights.completeness || 0) / totalWeight);
+      if (rawClar === null) rawClar = Math.round(parsedOverall * (rubricWeights.clarity || 0) / totalWeight);
+      if (rawObj === null) rawObj = Math.round(parsedOverall * (rubricWeights.objectivity || 0) / totalWeight);
+    }
+
+    // Final numeric values (default to 0)
+    const accuracy = Math.round(Number(rawAcc ?? 0));
+    const completeness = Math.round(Number(rawComp ?? 0));
+    const clarity = Math.round(Number(rawClar ?? 0));
+    const objectivity = Math.round(Number(rawObj ?? 0));
+    let overall = Number(parsed.overall_score ?? parsed.overall ?? parsed.score ?? NaN);
     if (Number.isNaN(overall)) {
       const totalWeight = (rubricWeights.accuracy || 0) + (rubricWeights.completeness || 0) + (rubricWeights.clarity || 0) + (rubricWeights.objectivity || 0) || 100;
       const wAcc = (rubricWeights.accuracy || 0) / totalWeight;
