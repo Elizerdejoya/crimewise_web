@@ -885,6 +885,40 @@ const TakeExam = () => {
             : "Your answers have been recorded successfully.",
       });
 
+      // Enqueue AI grading (non-blocking)
+      try {
+        // Determine teacherFindings: prefer question.explanation, fallback to answer.explanation.text or question.answer
+        let teacherFindingsToSend = '';
+        try {
+          if (question.explanation && String(question.explanation).trim()) {
+            teacherFindingsToSend = question.explanation;
+          } else if (question.answer) {
+            const parsed = typeof question.answer === 'string' ? JSON.parse(question.answer) : question.answer;
+            if (parsed && parsed.explanation) {
+              if (typeof parsed.explanation === 'string') teacherFindingsToSend = parsed.explanation;
+              else if (parsed.explanation.text) teacherFindingsToSend = parsed.explanation.text;
+            } else {
+              teacherFindingsToSend = question.answer;
+            }
+          }
+        } catch (e) {
+          teacherFindingsToSend = question.answer || '';
+        }
+
+        fetch(`${API_BASE_URL}/api/ai-grader/submit`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            studentId: student_id,
+            examId: exam.id,
+            teacherFindings: teacherFindingsToSend,
+            studentFindings: answerToSave || ''
+          })
+        }).catch(err => console.error('Failed to enqueue AI grading:', err));
+      } catch (e) {
+        console.error('AI enqueue error:', e);
+      }
+
       sessionStorage.removeItem("currentExam");
       sessionStorage.removeItem("examStartTimestamp");
       navigate("/student/results");
