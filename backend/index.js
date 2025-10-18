@@ -70,6 +70,7 @@ const subscriptionsRoutes = require("./routes/subscriptions");
 const chatbotRoutes = require("./routes/chatbot");
 const keywordPoolsRoutes = require("./routes/keyword-pools");
 const contactRoutes = require("./routes/contact");
+const aiGraderRoutes = require("./routes/ai-grader");
 
 // Mount modular routes
 app.use("/api/batches", batchesRoutes);
@@ -83,6 +84,7 @@ app.use("/api/exams", examsRoutes);
 app.use("/api/organizations", organizationsRoutes);
 app.use("/api/subscriptions", subscriptionsRoutes);
 app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/ai-grader", aiGraderRoutes);
 app.use("/api", keywordPoolsRoutes);
 app.use("/api", questionsRouter);
 app.use("/api", contactRoutes);
