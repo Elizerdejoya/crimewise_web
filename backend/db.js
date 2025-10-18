@@ -139,6 +139,7 @@ async function initializeSchema() {
       points INTEGER,      -- Total points (sum of specimen points + explanation points)
       explanation TEXT,    -- Legacy field for backward compatibility
       explanation_points INTEGER DEFAULT 0,  -- Points specifically for explanation section
+      rubrics TEXT DEFAULT NULL, -- JSON string: {accuracy:40,completeness:30,clarity:20,objectivity:10}
       keyword_pool_id INTEGER, -- Reference to keyword pool used for this question
       selected_keywords TEXT, -- JSON array of selected keywords from the pool
       created_by INTEGER,
@@ -178,6 +179,36 @@ async function initializeSchema() {
       FOREIGN KEY(instructor_id) REFERENCES users(id),
       FOREIGN KEY(organization_id) REFERENCES organizations(id)
       -- FOREIGN KEY(question_id) REFERENCES questions(id) -- Revisit this relationship if multiple questions per exam
+    )`;
+
+    // AI grades table for storing Gemini grading results
+    await db.sql`CREATE TABLE IF NOT EXISTS ai_grades (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      exam_id INTEGER NOT NULL,
+      score INTEGER NOT NULL,
+      accuracy INTEGER DEFAULT 0,
+      completeness INTEGER DEFAULT 0,
+      clarity INTEGER DEFAULT 0,
+      objectivity INTEGER DEFAULT 0,
+      feedback TEXT,
+      raw_response TEXT,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(student_id) REFERENCES users(id)
+    )`;
+
+    // Queue table for AI grading jobs (DB-backed queue)
+    await db.sql`CREATE TABLE IF NOT EXISTS ai_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      exam_id INTEGER NOT NULL,
+      teacher_findings TEXT,
+      student_findings TEXT,
+      status TEXT DEFAULT 'pending', -- pending, processing, done, error
+      attempts INTEGER DEFAULT 0,
+      last_error TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`;
 
     console.log("Database schema initialized successfully.");
