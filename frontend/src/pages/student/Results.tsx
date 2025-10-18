@@ -387,7 +387,7 @@ const Results = () => {
     printWindow.print();
     printWindow.close();
   };
-  
+
   // Fetch AI grade for a particular result when user opens details
   const fetchAiGradeForResult = async (studentId: number, examId: number) => {
     try {
@@ -406,7 +406,7 @@ const Results = () => {
     }
   };
 
-  
+
   // Process results for display with sorting
   const processedResults = [...filteredResults].map(result => {
     // Compute raw_score, raw_total, and points-based scoring for forensic if not present
@@ -639,7 +639,7 @@ const Results = () => {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={async () => { await fetchAiGradeForResult(result.student_id || result.studentId, result.exam_id || result.examId); setSelectedResult(result); }}
+                                      onClick={async () => { await fetchAiGradeForResult(result.student_id || result.studentId, result.exam_id || result.examId); setSelectedResult(result); }}
                                   >
                                     <Eye className="h-4 w-4 mr-2" /> View Details
                                   </Button>
@@ -678,13 +678,25 @@ const Results = () => {
                                     {selectedAiGrade ? (
                                       <div className="p-4 border rounded-md bg-white">
                                         <h4 className="font-semibold mb-2">AI Rubric Breakdown</h4>
-                                        <div className="grid grid-cols-2 gap-2 text-sm mb-2">
-                                          <div><strong>Accuracy:</strong> {selectedAiGrade.accuracy ?? '-'}%</div>
-                                          <div><strong>Completeness:</strong> {selectedAiGrade.completeness ?? '-'}%</div>
-                                          <div><strong>Clarity:</strong> {selectedAiGrade.clarity ?? '-'}%</div>
-                                          <div><strong>Objectivity:</strong> {selectedAiGrade.objectivity ?? '-'}%</div>
-                                          <div className="col-span-2 mt-2"><strong>Overall Score:</strong> {selectedAiGrade.score ?? '-'}%</div>
-                                        </div>
+                                        {(() => {
+                                          // Normalize values and fallback to overall score when components are missing/zero
+                                          const overall = Number(selectedAiGrade.score ?? selectedAiGrade.overall ?? NaN);
+                                          const fmt = (v: any) => {
+                                            const n = Number(v);
+                                            if (!Number.isNaN(n) && n > 0) return `${Math.round(n)}%`;
+                                            if (!Number.isNaN(overall)) return `${Math.round(overall)}%`;
+                                            return '-';
+                                          };
+                                          return (
+                                            <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                                              <div><strong>Accuracy:</strong> {fmt(selectedAiGrade.accuracy)}</div>
+                                              <div><strong>Completeness:</strong> {fmt(selectedAiGrade.completeness)}</div>
+                                              <div><strong>Clarity:</strong> {fmt(selectedAiGrade.clarity)}</div>
+                                              <div><strong>Objectivity:</strong> {fmt(selectedAiGrade.objectivity)}</div>
+                                              <div className="col-span-2 mt-2"><strong>Overall Score:</strong> {!Number.isNaN(overall) ? `${Math.round(overall)}%` : '-'}</div>
+                                            </div>
+                                          );
+                                        })()}
                                         <div className="mt-2">
                                           <strong>AI Explanation:</strong>
                                           <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{selectedAiGrade.feedback}</div>
