@@ -141,6 +141,63 @@ router.post('/process-pending', async (req, res) => {
   }
 });
 
+// POST /api/ai-grader/backfill
+// Backfill ai_grades rows where component rubrics are missing or zero using exam/question rubrics.
+router.post('/backfill', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit || 1000);
+
+    const rows = await db.sql`SELECT * FROM ai_grades WHERE (accuracy IS NULL OR accuracy = 0) AND (completeness IS NULL OR completeness = 0) AND (clarity IS NULL OR clarity = 0) AND (objectivity IS NULL OR objectivity = 0) AND score > 0 ORDER BY id ASC LIMIT ${limit}`;
+    const list = Array.isArray(rows) ? rows : (rows ? [rows] : []);
+
+    let updated = 0;
+
+    for (const row of list) {
+      try {
+        // defaults
+        let weights = { accuracy: 40, completeness: 30, clarity: 20, objectivity: 10 };
+
+        // Try to load exam -> question -> rubrics
+        const examRow = await db.sql`SELECT * FROM exams WHERE id = ${row.exam_id} LIMIT 1`;
+        const exam = Array.isArray(examRow) ? examRow[0] : examRow;
+        if (exam && exam.question_id) {
+          const qRow = await db.sql`SELECT rubrics FROM questions WHERE id = ${exam.question_id} LIMIT 1`;
+          const q = Array.isArray(qRow) ? qRow[0] : qRow;
+          if (q && q.rubrics) {
+            try {
+              const parsed = typeof q.rubrics === 'string' ? JSON.parse(q.rubrics) : q.rubrics;
+              weights = {
+                accuracy: Number(parsed.accuracy ?? weights.accuracy),
+                completeness: Number(parsed.completeness ?? weights.completeness),
+                clarity: Number(parsed.clarity ?? weights.clarity),
+                objectivity: Number(parsed.objectivity ?? weights.objectivity),
+              };
+            } catch (e) {
+              // ignore parse errors
+            }
+          }
+        }
+
+        const totalWeight = (weights.accuracy || 0) + (weights.completeness || 0) + (weights.clarity || 0) + (weights.objectivity || 0) || 100;
+        const acc = Math.round(row.score * (weights.accuracy || 0) / totalWeight);
+        const comp = Math.round(row.score * (weights.completeness || 0) / totalWeight);
+        const clar = Math.round(row.score * (weights.clarity || 0) / totalWeight);
+        const obj = Math.round(row.score * (weights.objectivity || 0) / totalWeight);
+
+        await db.sql`UPDATE ai_grades SET accuracy = ${acc}, completeness = ${comp}, clarity = ${clar}, objectivity = ${obj} WHERE id = ${row.id}`;
+        updated++;
+      } catch (e) {
+        console.error('[AI-GRADER][BACKFILL] Failed row id=', row.id, e && e.message ? e.message : e);
+      }
+    }
+
+    res.json({ scanned: list.length, updated });
+  } catch (err) {
+    console.error('[AI-GRADER][BACKFILL] Error:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Failed to run backfill' });
+  }
+});
+
 module.exports = router;
 
 // GET /api/ai-grader/result/:studentId/:examId - returns latest ai grade for student and exam
@@ -157,4 +214,3 @@ router.get('/result/:studentId/:examId', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch AI grade' });
   }
 });
-
