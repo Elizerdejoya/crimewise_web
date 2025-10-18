@@ -56,6 +56,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
   ]);
   const [explanation, setExplanation] = useState("");
   const [explanationPoints, setExplanationPoints] = useState(1);
+  const [rubrics, setRubrics] = useState({ accuracy: 40, completeness: 30, clarity: 20, objectivity: 10 });
   const [forensicConclusion, setForensicConclusion] = useState<
     "fake" | "real" | ""
   >("");
@@ -285,6 +286,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
       created_by: currentUser?.id, // Include the current user's ID
       explanation: explanation, // Add explanation as a separate field for direct access
       explanation_points: Number(explanationPoints) || 0, // Add explanation points separately
+      rubrics: JSON.stringify(rubrics),
       keyword_pool_id: selectedKeywordPool?.id || null,
       selected_keywords: selectedKeywords.length > 0 ? selectedKeywords : null,
     };
@@ -625,6 +627,26 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
           </div>
 
           <div className="space-y-2 border-t pt-4">
+            <Label>Rubric Weights (editable)</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-sm">Accuracy (%)</Label>
+                <Input type="number" min={0} max={100} value={rubrics.accuracy} onChange={e => setRubrics({ ...rubrics, accuracy: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label className="text-sm">Completeness (%)</Label>
+                <Input type="number" min={0} max={100} value={rubrics.completeness} onChange={e => setRubrics({ ...rubrics, completeness: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label className="text-sm">Clarity (%)</Label>
+                <Input type="number" min={0} max={100} value={rubrics.clarity} onChange={e => setRubrics({ ...rubrics, clarity: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label className="text-sm">Objectivity (%)</Label>
+                <Input type="number" min={0} max={100} value={rubrics.objectivity} onChange={e => setRubrics({ ...rubrics, objectivity: Number(e.target.value) })} />
+              </div>
+            </div>
+            <div className="text-sm text-muted-foreground">Sum of rubric weights should ideally equal 100. These weights will be used by the AI grader.</div>
             <div className="flex items-center justify-between">
               <Label htmlFor="explanation">Explanation</Label>
               <div className="flex items-center gap-2">
