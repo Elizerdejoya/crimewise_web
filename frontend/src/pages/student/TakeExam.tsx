@@ -27,9 +27,8 @@ const getAuthHeaders = () => {
   };
 };
 
-// Enhanced Image FullScreen Component with Pan and Zoom
+// In-place Image Viewer with Pan and Zoom (no fullscreen)
 const ImageFullScreen = ({ src, alt }: { src: string; alt: string }) => {
-  const [isFullScreen, setIsFullScreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -37,18 +36,13 @@ const ImageFullScreen = ({ src, alt }: { src: string; alt: string }) => {
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleZoomIn = () => {
-    setZoomLevel((prev) => Math.min(prev + 0.5, 5)); // Increased max zoom to 5x
-  };
-
-  const handleZoomOut = () => {
-    setZoomLevel((prev) => Math.max(prev - 0.5, 0.1)); // Decreased min zoom to 0.1x
-  };
+  const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 0.25, 4));
+  const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 0.25, 0.5));
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.2 : 0.2;
-    setZoomLevel((prev) => Math.max(0.1, Math.min(5, prev + delta)));
+    const delta = e.deltaY > 0 ? -0.05 : 0.05;
+    setZoomLevel((prev) => Math.max(0.5, Math.min(4, prev + delta)));
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -60,298 +54,167 @@ const ImageFullScreen = ({ src, alt }: { src: string; alt: string }) => {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging && zoomLevel > 1) {
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
-      });
+      setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
     }
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleMouseUp = () => setIsDragging(false);
+
+  // Touch handlers for mobile panning
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && zoomLevel > 1) {
+      const t = e.touches[0];
+      setIsDragging(true);
+      setDragStart({ x: t.clientX - position.x, y: t.clientY - position.y });
+    }
   };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isDragging && e.touches.length === 1 && zoomLevel > 1) {
+      const t = e.touches[0];
+      setPosition({ x: t.clientX - dragStart.x, y: t.clientY - dragStart.y });
+    }
+  };
+
+  const handleTouchEnd = () => setIsDragging(false);
 
   const resetView = () => {
     setZoomLevel(1);
     setPosition({ x: 0, y: 0 });
   };
 
-  const toggleFullScreen = () => {
-    setIsFullScreen((prev) => !prev);
-    // Reset view when toggling fullscreen mode
-    resetView();
-  };
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    if (!isFullScreen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case "Escape":
-          toggleFullScreen();
-          break;
-        case "r":
-        case "R":
-          e.preventDefault();
-          resetView();
-          break;
-        case "+":
-        case "=":
-          e.preventDefault();
-          handleZoomIn();
-          break;
-        case "-":
-          e.preventDefault();
-          handleZoomOut();
-          break;
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isFullScreen]);
-
   return (
-    <div className="relative inline-block w-full">
-      {isFullScreen && (
-        <div
-          className="fixed inset-0 z-50 bg-black bg-opacity-95 flex items-center justify-center"
-          onWheel={handleWheel}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          <div
-            ref={containerRef}
-            className="relative w-full h-full flex items-center justify-center overflow-hidden"
-            style={{
-              cursor: isDragging
-                ? "grabbing"
-                : zoomLevel > 1
-                  ? "grab"
-                  : "default",
-            }}
-          >
-            <img
-              ref={imgRef}
-              src={src}
-              alt={alt}
-              className="max-w-full max-h-full object-contain select-none"
-              style={{
-                transform: `translate(${position.x}px, ${position.y}px) scale(${zoomLevel})`,
-                transition: isDragging ? "none" : "transform 0.1s ease-out",
-                cursor: isDragging
-                  ? "grabbing"
-                  : zoomLevel > 1
-                    ? "grab"
-                    : "default",
-              }}
-              draggable={false}
-            />
-
-            {/* Zoom and Control Panel */}
-            <div className="absolute top-4 right-4 bg-white/90 rounded-lg shadow-lg p-2 flex flex-col gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleZoomIn}
-                className="h-8 w-8"
-                title="Zoom in"
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleZoomOut}
-                className="h-8 w-8"
-                title="Zoom out"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <div className="text-xs text-center px-2 py-1 bg-gray-100 rounded">
-                {Math.round(zoomLevel * 100)}%
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={resetView}
-                className="h-8 w-8"
-                title="Reset view"
-              >
-                <span className="text-xs font-bold">R</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleFullScreen}
-                className="h-8 w-8"
-                title="Exit full screen"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Instructions */}
-            <div className="absolute bottom-4 left-4 bg-white/90 rounded-lg shadow-lg p-3 text-sm">
-              <div className="font-medium mb-1">Controls:</div>
-              <div>• Mouse wheel: Zoom in/out</div>
-              <div>• Click and drag: Pan when zoomed in</div>
-              <div>• R or Reset button: Reset view</div>
-              <div>• +/- keys: Zoom in/out</div>
-              <div>• Escape: Exit fullscreen</div>
-            </div>
-          </div>
-        </div>
-      )}
-
+    <div
+      ref={containerRef}
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="relative w-full h-full bg-white"
+      style={{ overflow: 'hidden', touchAction: 'none' }}
+    >
       <img
+        ref={imgRef}
         src={src}
         alt={alt}
-        className="w-full h-auto border rounded cursor-pointer hover:opacity-90 transition-opacity"
-        style={{ objectFit: "contain", maxHeight: "400px" }}
-        onClick={toggleFullScreen}
+        className="max-w-full max-h-full object-contain select-none"
+        style={{
+          transform: `translate(${position.x}px, ${position.y}px) scale(${zoomLevel})`,
+          transition: isDragging ? 'none' : 'transform 0.08s ease-out',
+          cursor: isDragging ? 'grabbing' : zoomLevel > 1 ? 'grab' : 'default',
+          maxHeight: '360px',
+          display: 'block',
+          margin: '0 auto'
+        }}
+        draggable={false}
       />
 
-      <div className="absolute top-2 right-2 bg-white/90 rounded-md shadow-sm">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleFullScreen}
-          className="h-8 w-8"
-          title="View full screen"
-        >
+      {/* Inline zoom controls */}
+      <div className="absolute top-2 right-2 bg-white/90 rounded-md shadow p-1 flex gap-1 z-10">
+        <Button variant="ghost" size="icon" onClick={handleZoomIn} className="h-8 w-8">
           <ZoomIn className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={handleZoomOut} className="h-8 w-8">
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <div className="text-xs px-2 flex items-center">{Math.round(zoomLevel * 100)}%</div>
+        <Button variant="ghost" size="icon" onClick={resetView} className="h-8 w-8">
+          <span className="text-xs font-bold">R</span>
         </Button>
       </div>
     </div>
   );
 };
 
-// Multi-Image Display Component
+// Multi-image display: left image is fixed (QS1), right image is switchable among remaining images.
 const MultiImageDisplay = ({ images }: { images: string[] }) => {
-  const [selectedImage, setSelectedImage] = useState(0);
+  const [rightIndex, setRightIndex] = useState(1);
 
-  if (images.length === 1) {
-    return (
-      <div className="relative">
-        <div className="mb-2 flex justify-center">
-          <div className="bg-white text-black text-sm font-semibold px-3 py-1 rounded border border-gray-200 shadow-sm">SS</div>
-        </div>
-        <ImageFullScreen src={images[0]} alt="Question Image" />
-      </div>
-    );
-  }
+  const rightImages = images.slice(1);
+
+  const handlePrev = () => {
+    setRightIndex((prev) => Math.max(1, prev - 1));
+  };
+  const handleNext = () => {
+    setRightIndex((prev) => Math.min(images.length - 1, prev + 1));
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Image Navigation (thumbnails) */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
-        {images.map((image, index) => (
-          <div key={index} className="flex items-center">
+    <div className="mb-12">
+      {/* Thumbnails above both images */}
+      <div className="flex gap-2 mb-4 overflow-x-auto w-full items-end">
+        {images.map((img, idx) => (
+          <div key={idx} className="flex flex-col items-center flex-shrink-0" style={{ minWidth: 64 }}>
+            <div className="text-[10px] text-gray-700 mb-1">
+              {idx === 0 ? 'QS1' : `SS${idx}`}
+            </div>
             <button
-              onClick={() => setSelectedImage(index)}
-              className={`flex-shrink-0 relative border-2 rounded-lg overflow-hidden transition-all ${
-                selectedImage === index
-                  ? "border-blue-500 shadow-lg"
-                  : "border-gray-300 hover:border-gray-400"
-              }`}
+              onClick={() => idx > 0 && setRightIndex(idx)}
+              disabled={idx === 0}
+              aria-disabled={idx === 0}
+              className={`border rounded-md p-1 ${idx === 0 ? 'opacity-60 cursor-not-allowed' : ''} ${idx === rightIndex ? 'ring-2 ring-primary' : ''}`}
             >
-              {/* Small top-center badge on thumbnail */}
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-white text-black text-xs font-semibold px-2 py-0.5 rounded-full shadow-sm border border-gray-200">
-                {index === 0 ? "SS" : "QS"}
-              </div>
-              <img src={image} alt={`Image ${index + 1}`} className="w-20 h-20 object-cover" />
+              <img src={img} alt={`thumb-${idx}`} className="h-12 object-cover rounded-sm" />
             </button>
-
-            {/* Softer divider between first and others */}
-            {index === 0 && images.length > 1 && (
-              <div className="w-px h-10 bg-gray-200 mx-3" aria-hidden />
-            )}
           </div>
         ))}
       </div>
 
-      {/* Main Image Display with small badge overlay and optional separator line under first image */}
-      <div className="relative">
-        {/* Badge overlay on main image (top-center) */}
-        <div className="absolute z-30 top-3 left-1/2 transform -translate-x-1/2 bg-white text-black text-sm font-semibold px-3 py-1 rounded shadow-sm border border-gray-200">
-          {selectedImage === 0 ? "SS" : "QS"}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col items-center">
+          <div className="text-xs font-medium mb-1">QS1</div>
+          <div className="w-full border rounded-md p-2">
+            <ImageFullScreen src={images[0]} alt={`QS1`} />
+          </div>
         </div>
 
-        <ImageFullScreen src={images[selectedImage]} alt={`Question Image ${selectedImage + 1}`} />
+        <div className="flex flex-col items-center">
+          <div className="text-xs font-medium mb-1">SS{rightIndex}</div>
+          <div className="w-full border rounded-md p-2">
+            <ImageFullScreen src={images[rightIndex]} alt={`SS${rightIndex}`} />
+          </div>
 
-        {/* Show a subtle horizontal separator under the first image to separate it from others */}
-        {images.length > 1 && selectedImage === 0 && (
-          <div className="mt-4 border-t border-gray-200" />
-        )}
-
-        <div className="absolute top-2 left-2 bg-white/90 rounded-md shadow-sm px-2 py-1 text-sm font-medium">
-          Image {selectedImage + 1} of {images.length}
+          <div className="flex gap-2 mt-3">
+            <Button onClick={handlePrev} size="sm" variant="secondary">Prev</Button>
+            <Button onClick={handleNext} size="sm" variant="secondary">Next</Button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
 const TakeExam = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const [exam, setExam] = useState<any>(null);
-  const [question, setQuestion] = useState<any>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
-  const [answer, setAnswer] = useState<any>([]); // Initialize as empty array instead of empty string
-  const [explanation, setExplanation] = useState("");
-  const [studentConclusion, setStudentConclusion] = useState<"fake" | "real" | "">("");
-  const [startTimestamp, setStartTimestamp] = useState<number | null>(null);
-  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [exam, setExam] = useState<any | null>(null);
+  const [question, setQuestion] = useState<any | null>(null);
+  const [rubrics, setRubrics] = useState<any | null>(null);
+  const [startTimestamp, setStartTimestamp] = useState<number | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [answer, setAnswer] = useState<any>(null);
+  const [studentConclusion, setStudentConclusion] = useState<string>("");
+  const [explanation, setExplanation] = useState<string>("");
   const [scoringDetails, setScoringDetails] = useState<any>(null);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
-  // Block browser back button
-  useEffect(() => {
-    // Create an entry in the history stack one step ahead of the current entry
-    const pushState = () => {
-      window.history.pushState(null, "", location.pathname);
-    };
-
-    // Function to handle popstate (back/forward button clicks)
-    const handlePopstate = (event: PopStateEvent) => {
-      event.preventDefault();
-      // Push another state to prevent going back
-      pushState();
-      // Show leave dialog
-      setShowLeaveDialog(true);
-    };
-
-    // Initialize: push state to create a barrier
-    pushState();
-
-    // Listen for back button clicks
-    window.addEventListener("popstate", handlePopstate);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopstate);
-    };
-  }, [location.pathname]);
-
-  // Detect tab visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
         setTabSwitchCount((prev) => prev + 1);
-        // Show warning when user returns
         setTimeout(() => {
           if (document.visibilityState === "visible") {
             toast({
               title: "Warning",
-              description:
-                "Tab switching detected! This has been reported to your instructor.",
+              description: "Tab switching detected! This has been reported to your instructor.",
               variant: "destructive",
               duration: 5000,
             });
@@ -361,8 +224,7 @@ const TakeExam = () => {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [toast]);
 
   // Prevent accidental navigation
@@ -419,6 +281,23 @@ const TakeExam = () => {
             }
           } catch (e) {
             console.error("Error parsing forensic answer:", e);
+          }
+          // parse rubrics from question if present
+          try {
+            if (q && q.rubrics) {
+              const parsed = typeof q.rubrics === 'string' ? JSON.parse(q.rubrics) : q.rubrics;
+              setRubrics({
+                accuracy: Number(parsed.accuracy ?? 40),
+                completeness: Number(parsed.completeness ?? 30),
+                clarity: Number(parsed.clarity ?? 20),
+                objectivity: Number(parsed.objectivity ?? 10),
+              });
+            } else {
+              setRubrics({ accuracy: 40, completeness: 30, clarity: 20, objectivity: 10 });
+            }
+          } catch (e) {
+            console.error('Error parsing question rubrics:', e);
+            setRubrics({ accuracy: 40, completeness: 30, clarity: 20, objectivity: 10 });
           }
         }
       });
@@ -1111,12 +990,12 @@ const TakeExam = () => {
 
   return (
     <div className="container max-w-4xl mx-auto px-2 py-4">
-      {/* Sticky header with timer and back button */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 py-2 mb-4 border-b flex justify-between items-center">
-        <Button variant="outline" size="sm" onClick={handleBackClick}>
-          Back
+      {/* Sticky header with timer and leave button (styled like submit) */}
+      <div className="sticky top-0 z-10 bg-primary text-primary-foreground py-2 mb-4 border-b flex justify-between items-center px-4 w-full">
+        <Button onClick={handleBackClick} size="sm" className="bg-red-600 text-white hover:bg-red-700">
+          Leave Exam
         </Button>
-        <div className="text-3xl font-mono bg-muted px-4 py-2 rounded-md">
+        <div className="text-3xl font-mono px-4 py-2 rounded-md">
           {formatTime(timeLeft)}
         </div>
       </div>
@@ -1134,6 +1013,17 @@ const TakeExam = () => {
         </CardHeader>
         <CardContent className="py-3 px-4 space-y-4">
           <p>{question.text}</p>
+          {rubrics && (
+            <div className="bg-gray-50 border rounded-md p-3 text-sm">
+              <div className="font-semibold mb-1">Instructor rubric weights</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><strong>Accuracy</strong><div className="text-muted-foreground">{rubrics.accuracy}%</div></div>
+                <div><strong>Completeness</strong><div className="text-muted-foreground">{rubrics.completeness}%</div></div>
+                <div><strong>Clarity</strong><div className="text-muted-foreground">{rubrics.clarity}%</div></div>
+                <div><strong>Objectivity</strong><div className="text-muted-foreground">{rubrics.objectivity}%</div></div>
+              </div>
+            </div>
+          )}
           {answerInput}
 
           {/* Forensic Conclusion Selection - only show for forensic questions */}
@@ -1142,29 +1032,23 @@ const TakeExam = () => {
               <label className="block text-sm font-medium">
                 Forensic Conclusion <span className="text-red-500">*</span>
               </label>
-              <div className="flex gap-4">
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    name="conclusion"
-                    value="fake"
-                    checked={studentConclusion === "fake"}
-                    onChange={(e) => setStudentConclusion("fake")}
-                    className="form-radio"
-                  />
-                  <span>Not Written by the Same Person</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    name="conclusion"
-                    value="real"
-                    checked={studentConclusion === "real"}
-                    onChange={(e) => setStudentConclusion("real")}
-                    className="form-radio"
-                  />
-                  <span>Written by the Same Person</span>
-                </label>
+              <div className="flex flex-col md:flex-row gap-2">
+                <Button
+                  type="button"
+                  variant={studentConclusion === "fake" ? "default" : "outline"}
+                  onClick={() => setStudentConclusion("fake")}
+                  className="flex-1 w-full"
+                >
+                  Not Written by the Same Person
+                </Button>
+                <Button
+                  type="button"
+                  variant={studentConclusion === "real" ? "default" : "outline"}
+                  onClick={() => setStudentConclusion("real")}
+                  className="flex-1 w-full"
+                >
+                  Written by the Same Person
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
                 <strong>Required:</strong> Select whether you believe the specimen is fake or real based on your analysis.
